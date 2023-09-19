@@ -32,16 +32,19 @@ class AuthController(private val userService: UserService) {
     @PostMapping("login")
     fun login(@RequestBody body: LoginDTO, response: HttpServletResponse): ResponseEntity<Any> {
 
-        val user = userService.findByEmail(body.email) ?: ResponseEntity.badRequest().body(Message("User not found"))
+        val user = userService.findByEmail(body.email)
 
-        if (user is User) {
+        if (user == null) {
+            return ResponseEntity.badRequest().body(Message("User not found"))
+
+        } else {
             if (!user.comparePassword(body.password))
                 return ResponseEntity.badRequest().body(Message("Invalid password"))
 
 
             val issuer = user.id.toString()
 
-            //val key = Keys.secretKeyFor(SignatureAlgorithm.HS256)
+            //val key = Keys.secretKeyFor(SignatureAlgorithm.HS256) // generates key
 
             val jwt = Jwts.builder()
                 .setIssuer(issuer)
@@ -51,8 +54,6 @@ class AuthController(private val userService: UserService) {
             val cookie = Cookie("jwt", jwt)
             cookie.isHttpOnly = true
             response.addCookie(cookie)
-
-            //return ResponseEntity.ok(jwt)
         }
 
         return ResponseEntity.ok(Message("success"))
@@ -68,8 +69,9 @@ class AuthController(private val userService: UserService) {
             ResponseEntity.status(401).body(Message("Unauthenticated"))
         }
     }
+
     @PostMapping("/logout")
-    fun logout(response: HttpServletResponse): ResponseEntity<Any>{
+    fun logout(response: HttpServletResponse): ResponseEntity<Any> {
         val cookie = Cookie("jwt", "")
         cookie.maxAge = 0
 
